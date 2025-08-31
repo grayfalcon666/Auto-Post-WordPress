@@ -101,9 +101,9 @@ def get_html_content_from_input():
 
 def main():
     # 配置你的WordPress信息
-    SITE_URL = "https://blog.jamaisvu.tech"  # 你的WordPress站点地址
-    USERNAME = "grayfalcon"  # 替换为你的WordPress用户名
-    APP_PASSWORD = "rR2t QqwH 8PPu oYjj uf4V DYAD"  # 替换为你的应用程序密码
+    SITE_URL = "https://example"  # 你的WordPress站点地址
+    USERNAME = "username"  # 替换为你的WordPress用户名
+    APP_PASSWORD = "password"  # 替换为你的应用程序密码
 
     # 初始化发布器
     publisher = WordPressPublisher(SITE_URL, USERNAME, APP_PASSWORD)
