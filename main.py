@@ -1,6 +1,8 @@
 import requests
 import base64
 import json
+import os
+from ai_formatter import optimize_content, PROMPT_TEMPLATES
 
 
 class WordPressPublisher:
@@ -99,11 +101,78 @@ def get_html_content_from_input():
     return "\n".join(lines)
 
 
+def configure_ai_optimization():
+    """
+    配置AI优化选项
+    """
+    print("\n" + "=" * 50)
+    print("AI 排版优化配置")
+    print("=" * 50)
+
+    # 检查是否已设置API密钥
+    if not os.environ.get("OPENAI_API_KEY"):
+        api_key = input("请输入OpenAI API密钥: ").strip()
+        if api_key:
+            os.environ["OPENAI_API_KEY"] = api_key
+        else:
+            print("未提供API密钥，跳过AI优化")
+            return None
+
+    # 选择是否使用AI优化
+    use_ai = input("是否使用AI排版优化? (y/N): ").strip().lower()
+    if use_ai != 'y':
+        return None
+
+    # 选择提示词模板
+    print("\n可用的提示词模板:")
+    for i, (key, template) in enumerate(PROMPT_TEMPLATES.items(), 1):
+        print(f"{i}. {key}: {template[:50]}...")
+
+    print(f"{len(PROMPT_TEMPLATES) + 1}. 自定义提示词")
+
+    template_choice = input(f"请选择提示词模板 (1-{len(PROMPT_TEMPLATES) + 1}) [默认: 1]: ").strip()
+
+    if template_choice == str(len(PROMPT_TEMPLATES) + 1):
+        custom_prompt = input("请输入自定义提示词模板 (使用{}作为内容占位符): ").strip()
+        prompt_template = custom_prompt
+    else:
+        try:
+            choice_idx = int(template_choice) - 1 if template_choice else 0
+            prompt_key = list(PROMPT_TEMPLATES.keys())[choice_idx]
+            prompt_template = PROMPT_TEMPLATES[prompt_key]
+        except (ValueError, IndexError):
+            prompt_key = list(PROMPT_TEMPLATES.keys())[0]
+            prompt_template = PROMPT_TEMPLATES[prompt_key]
+            print(f"使用默认模板: {prompt_key}")
+
+    # 配置温度参数
+    temperature_input = input("温度参数 (0.0-1.0, 控制创造性) [默认: 0.7]: ").strip()
+    try:
+        temperature = float(temperature_input) if temperature_input else 0.7
+    except ValueError:
+        temperature = 0.7
+        print("使用默认温度: 0.7")
+
+    # 配置最大token数
+    max_tokens_input = input("最大token数 (控制响应长度) [默认: 1000]: ").strip()
+    try:
+        max_tokens = int(max_tokens_input) if max_tokens_input else 1000
+    except ValueError:
+        max_tokens = 1000
+        print("使用默认最大token数: 1000")
+
+    return {
+        "prompt_template": prompt_template,
+        "temperature": temperature,
+        "max_tokens": max_tokens
+    }
+
+
 def main():
     # 配置你的WordPress信息
-    SITE_URL = "https://example"  # 你的WordPress站点地址
-    USERNAME = "username"  # 替换为你的WordPress用户名
-    APP_PASSWORD = "password"  # 替换为你的应用程序密码
+    SITE_URL = "https://blog.jamaisvu.tech"  # 你的WordPress站点地址
+    USERNAME = "your_username"  # 替换为你的WordPress用户名
+    APP_PASSWORD = "your_app_password"  # 替换为你的应用程序密码
 
     # 初始化发布器
     publisher = WordPressPublisher(SITE_URL, USERNAME, APP_PASSWORD)
@@ -120,8 +189,38 @@ def main():
         print("HTML内容不能为空，程序退出")
         return
 
+    # 配置AI优化选项
+    ai_config = configure_ai_optimization()
+
+    # 如果配置了AI优化，则应用优化
+    if ai_config:
+        print("\n正在使用AI优化内容...")
+        try:
+            optimized_content = optimize_content(
+                html_content,
+                prompt_template=ai_config["prompt_template"],
+                temperature=ai_config["temperature"],
+                max_tokens=ai_config["max_tokens"]
+            )
+
+            print("\n优化前内容预览:")
+            print(html_content[:200] + "..." if len(html_content) > 200 else html_content)
+            print("\n优化后内容预览:")
+            print(optimized_content[:200] + "..." if len(optimized_content) > 200 else optimized_content)
+
+            use_optimized = input("\n是否使用优化后的内容? (Y/n): ").strip().lower()
+            if use_optimized != 'n':
+                html_content = optimized_content
+                print("已使用优化后的内容")
+            else:
+                print("保留原始内容")
+
+        except Exception as e:
+            print(f"AI优化过程中出错: {str(e)}")
+            print("将继续使用原始内容")
+
     # 确认发布状态
-    status_choice = input("发布状态 (1: 发布, 2: 草稿) [默认: 1]: ").strip()
+    status_choice = input("\n发布状态 (1: 发布, 2: 草稿) [默认: 1]: ").strip()
     status = 'publish' if status_choice != '2' else 'draft'
 
     # 可选：获取分类和标签
