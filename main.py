@@ -2,26 +2,21 @@ import requests
 import base64
 import json
 import os
-from ai_formatter import optimize_content, PROMPT_TEMPLATES
+from config import WORDPRESS, OPENAI, PROMPT_TEMPLATES, APP
 
 
 class WordPressPublisher:
-    def __init__(self, site_url, username, app_password):
+    def __init__(self):
         """
-        初始化WordPress发布器
-
-        参数:
-            site_url: WordPress站点地址 (例如: https://yourwordpresssite.com)
-            username: WordPress用户名
-            app_password: 应用程序密码(在WordPress用户配置中生成)
+        初始化WordPress发布器，使用config.py中的配置
         """
-        self.site_url = site_url.rstrip('/')
-        self.api_url = f"{self.site_url}/wp-json/wp/v2/posts"  # WordPress标准文章API端点
-        self.username = username
-        self.app_password = app_password
+        self.site_url = WORDPRESS["SITE_URL"].rstrip('/')
+        self.api_url = f"{self.site_url}/wp-json/wp/v2/posts"
+        self.username = WORDPRESS["USERNAME"]
+        self.app_password = WORDPRESS["APP_PASSWORD"]
 
         # 准备Basic Auth认证头
-        credentials = f"{username}:{app_password}"
+        credentials = f"{self.username}:{self.app_password}"
         token = base64.b64encode(credentials.encode()).decode('utf-8')
 
         self.headers = {
@@ -30,25 +25,17 @@ class WordPressPublisher:
             'User-Agent': 'WordPress-HTML-Publisher/1.0'
         }
 
-    def create_html_post(self, title, html_content, status='publish', categories=None, tags=None, excerpt=''):
+    def create_html_post(self, title, html_content, status=None, categories=None, tags=None, excerpt=''):
         """
         发布HTML内容到WordPress
-
-        参数:
-            title: 文章标题
-            html_content: HTML格式的文章内容
-            status: 文章状态 ('draft'草稿, 'publish'立即发布, 'pending'审核)
-            categories: 分类ID列表 (可选)
-            tags: 标签ID列表 (可选)
-            excerpt: 文章摘要 (可选)
-
-        返回:
-            成功时返回API响应，失败时返回None
         """
+        # 使用配置中的默认状态或传入的状态
+        post_status = status if status else APP["DEFAULT_STATUS"]
+
         post_data = {
             'title': title,
-            'content': html_content,  # 直接使用HTML内容
-            'status': status,
+            'content': html_content,
+            'status': post_status,
             'excerpt': excerpt,
         }
 
@@ -63,7 +50,7 @@ class WordPressPublisher:
                 self.api_url,
                 headers=self.headers,
                 data=json.dumps(post_data),
-                timeout=30
+                timeout=APP["TIMEOUT"]
             )
 
             if response.status_code == 201:
@@ -82,7 +69,6 @@ class WordPressPublisher:
 def get_html_content_from_input():
     """
     从用户输入获取HTML内容
-    用户可以输入多行HTML，以特殊标记:END结束输入
     """
     print("\n请输入HTML内容（输入 ':END' 单独一行结束输入）:")
     print("提示：可以输入多行HTML代码，完成后输入 ':END' 结束")
@@ -101,81 +87,129 @@ def get_html_content_from_input():
     return "\n".join(lines)
 
 
+def ask_ai_optimization():
+    """
+    询问是否使用AI优化
+    """
+    print("\n" + "=" * 50)
+    print("AI 排版优化选项")
+    print("=" * 50)
+
+    # 使用配置中的默认设置
+    default_choice = "y" if APP["ENABLE_AI_BY_DEFAULT"] else "n"
+    prompt = f"是否使用AI排版优化? (Y/n) [默认: {'是' if default_choice == 'y' else '否'}]: "
+
+    use_ai = input(prompt).strip().lower()
+    if not use_ai:  # 如果用户直接回车，使用默认值
+        use_ai = default_choice
+
+    return use_ai == 'y'
+
+
 def configure_ai_optimization():
     """
     配置AI优化选项
     """
-    print("\n" + "=" * 50)
-    print("AI 排版优化配置")
-    print("=" * 50)
-
     # 检查是否已设置API密钥
-    if not os.environ.get("OPENAI_API_KEY"):
-        api_key = input("请输入OpenAI API密钥: ").strip()
+    if not OPENAI["API_KEY"] or OPENAI["API_KEY"] == "your_openai_api_key":
+        api_key = input("请输入OpenAI API密钥 (直接回车跳过AI优化): ").strip()
         if api_key:
-            os.environ["OPENAI_API_KEY"] = api_key
+            # 更新配置（仅本次运行有效）
+            OPENAI["API_KEY"] = api_key
         else:
             print("未提供API密钥，跳过AI优化")
             return None
 
-    # 选择是否使用AI优化
-    use_ai = input("是否使用AI排版优化? (y/N): ").strip().lower()
-    if use_ai != 'y':
-        return None
-
     # 选择提示词模板
     print("\n可用的提示词模板:")
-    for i, (key, template) in enumerate(PROMPT_TEMPLATES.items(), 1):
-        print(f"{i}. {key}: {template[:50]}...")
+    templates = {
+        "1": "default: 标准优化",
+        "2": "technical: 技术文档优化",
+        "3": "creative: 创意写作优化",
+        "4": "seo: SEO优化",
+        "5": "minimal: 简洁优化"
+    }
 
-    print(f"{len(PROMPT_TEMPLATES) + 1}. 自定义提示词")
+    for key, desc in templates.items():
+        print(f"{key}. {desc}")
 
-    template_choice = input(f"请选择提示词模板 (1-{len(PROMPT_TEMPLATES) + 1}) [默认: 1]: ").strip()
-
-    if template_choice == str(len(PROMPT_TEMPLATES) + 1):
-        custom_prompt = input("请输入自定义提示词模板 (使用{}作为内容占位符): ").strip()
-        prompt_template = custom_prompt
-    else:
-        try:
-            choice_idx = int(template_choice) - 1 if template_choice else 0
-            prompt_key = list(PROMPT_TEMPLATES.keys())[choice_idx]
-            prompt_template = PROMPT_TEMPLATES[prompt_key]
-        except (ValueError, IndexError):
-            prompt_key = list(PROMPT_TEMPLATES.keys())[0]
-            prompt_template = PROMPT_TEMPLATES[prompt_key]
-            print(f"使用默认模板: {prompt_key}")
+    template_choice = input("请选择提示词模板 (1-5) [默认: 1]: ").strip() or "1"
 
     # 配置温度参数
-    temperature_input = input("温度参数 (0.0-1.0, 控制创造性) [默认: 0.7]: ").strip()
+    temperature_input = input(f"温度参数 (0.0-1.0, 控制创造性) [默认: {OPENAI['DEFAULT_TEMPERATURE']}]: ").strip()
     try:
-        temperature = float(temperature_input) if temperature_input else 0.7
+        temperature = float(temperature_input) if temperature_input else OPENAI["DEFAULT_TEMPERATURE"]
     except ValueError:
-        temperature = 0.7
-        print("使用默认温度: 0.7")
+        temperature = OPENAI["DEFAULT_TEMPERATURE"]
+        print(f"使用默认温度: {temperature}")
 
     # 配置最大token数
-    max_tokens_input = input("最大token数 (控制响应长度) [默认: 1000]: ").strip()
+    max_tokens_input = input(f"最大token数 (控制响应长度) [默认: {OPENAI['DEFAULT_MAX_TOKENS']}]: ").strip()
     try:
-        max_tokens = int(max_tokens_input) if max_tokens_input else 1000
+        max_tokens = int(max_tokens_input) if max_tokens_input else OPENAI["DEFAULT_MAX_TOKENS"]
     except ValueError:
-        max_tokens = 1000
-        print("使用默认最大token数: 1000")
+        max_tokens = OPENAI["DEFAULT_MAX_TOKENS"]
+        print(f"使用默认最大token数: {max_tokens}")
 
     return {
-        "prompt_template": prompt_template,
+        "template_choice": template_choice,
         "temperature": temperature,
         "max_tokens": max_tokens
     }
 
 
-def main():
-    # 配置你的WordPress信息
-    SITE_URL = "https://blog.jamaisvu.tech"  # 你的WordPress站点地址
-    USERNAME = "your_username"  # 替换为你的WordPress用户名
-    APP_PASSWORD = "your_app_password"  # 替换为你的应用程序密码
+def optimize_content_with_ai(content, ai_config):
+    """
+    使用AI优化内容
+    """
+    try:
+        # 动态导入AI模块
+        from ai_formatter import optimize_content
 
+        # 选择模板
+        templates_map = {
+            "1": "default",
+            "2": "technical",
+            "3": "creative",
+            "4": "seo",
+            "5": "minimal"
+        }
+
+        template_key = templates_map.get(ai_config["template_choice"], "default")
+        prompt_template = PROMPT_TEMPLATES.get(template_key, PROMPT_TEMPLATES["default"])
+
+        print("\n正在使用AI优化内容...")
+        optimized_content = optimize_content(
+            content,
+            prompt_template=prompt_template,
+            temperature=ai_config["temperature"],
+            max_tokens=ai_config["max_tokens"]
+        )
+
+        print("\n优化前内容预览:")
+        print(content[:200] + "..." if len(content) > 200 else content)
+        print("\n优化后内容预览:")
+        print(optimized_content[:200] + "..." if len(optimized_content) > 200 else optimized_content)
+
+        use_optimized = input("\n是否使用优化后的内容? (Y/n): ").strip().lower()
+        if use_optimized != 'n':
+            return optimized_content
+        else:
+            print("保留原始内容")
+            return content
+
+    except ImportError:
+        print("AI模块导入失败，跳过优化")
+        return content
+    except Exception as e:
+        print(f"AI优化过程中出错: {str(e)}")
+        print("将继续使用原始内容")
+        return content
+
+
+def main():
     # 初始化发布器
-    publisher = WordPressPublisher(SITE_URL, USERNAME, APP_PASSWORD)
+    publisher = WordPressPublisher()
 
     # 获取文章标题
     title = input("请输入文章标题: ").strip()
@@ -189,39 +223,21 @@ def main():
         print("HTML内容不能为空，程序退出")
         return
 
-    # 配置AI优化选项
-    ai_config = configure_ai_optimization()
+    # 询问是否使用AI优化
+    use_ai = ask_ai_optimization()
 
-    # 如果配置了AI优化，则应用优化
-    if ai_config:
-        print("\n正在使用AI优化内容...")
-        try:
-            optimized_content = optimize_content(
-                html_content,
-                prompt_template=ai_config["prompt_template"],
-                temperature=ai_config["temperature"],
-                max_tokens=ai_config["max_tokens"]
-            )
-
-            print("\n优化前内容预览:")
-            print(html_content[:200] + "..." if len(html_content) > 200 else html_content)
-            print("\n优化后内容预览:")
-            print(optimized_content[:200] + "..." if len(optimized_content) > 200 else optimized_content)
-
-            use_optimized = input("\n是否使用优化后的内容? (Y/n): ").strip().lower()
-            if use_optimized != 'n':
-                html_content = optimized_content
-                print("已使用优化后的内容")
-            else:
-                print("保留原始内容")
-
-        except Exception as e:
-            print(f"AI优化过程中出错: {str(e)}")
-            print("将继续使用原始内容")
+    # 如果选择使用AI优化，则配置并应用优化
+    if use_ai:
+        ai_config = configure_ai_optimization()
+        if ai_config:  # 只有在成功配置AI时才进行优化
+            html_content = optimize_content_with_ai(html_content, ai_config)
 
     # 确认发布状态
-    status_choice = input("\n发布状态 (1: 发布, 2: 草稿) [默认: 1]: ").strip()
-    status = 'publish' if status_choice != '2' else 'draft'
+    status_choice = input(f"\n发布状态 (1: 发布, 2: 草稿) [默认: {APP['DEFAULT_STATUS']}]: ").strip()
+    if status_choice == "2":
+        status = 'draft'
+    else:
+        status = APP["DEFAULT_STATUS"]
 
     # 可选：获取分类和标签
     categories_input = input("分类ID (多个用逗号分隔，直接回车跳过): ").strip()

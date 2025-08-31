@@ -1,19 +1,6 @@
 import openai
 import os
-
-# 预定义的提示词模板
-PROMPT_TEMPLATES = {
-    "default": "请优化以下内容的排版，使其更易读和专业：\n\n{}",
-    "technical": "作为技术文档专家，请优化以下技术内容的排版，确保专业性和准确性：\n\n{}",
-    "creative": "请以创意写作的方式优化以下内容，使其更生动有趣，同时保持原意：\n\n{}",
-    "seo": "请优化以下内容的排版，使其更适合搜索引擎优化，同时保持可读性：\n\n{}",
-    "minimal": "请简洁地优化以下内容的排版，去除冗余，保持核心信息：\n\n{}"
-}
-
-# OpenAI 参数默认值
-DEFAULT_TEMPERATURE = 0.7
-DEFAULT_MAX_TOKENS = 1000
-DEFAULT_MODEL = "gpt-3.5-turbo"
+from config import OPENAI, PROMPT_TEMPLATES
 
 
 def optimize_content(content, prompt_template=None, temperature=None, max_tokens=None, model=None):
@@ -31,25 +18,29 @@ def optimize_content(content, prompt_template=None, temperature=None, max_tokens
         优化后的内容
     """
     # 检查API密钥
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OpenAI API密钥未设置，请设置OPENAI_API_KEY环境变量")
+    api_key = OPENAI["API_KEY"]
+    if not api_key or api_key == "your_openai_api_key":
+        raise ValueError("OpenAI API密钥未设置，请在config.py中配置或运行时输入")
 
-    # 设置OpenAI API密钥
+    # 设置OpenAI API密钥和基础URL
     openai.api_key = api_key
+
+    # 如果配置了自定义基础URL，则设置它
+    if OPENAI["BASE_URL"] and OPENAI["BASE_URL"] != "https://api.openai.com/v1":
+        openai.api_base = OPENAI["BASE_URL"]
 
     # 使用默认值如果参数未提供
     if prompt_template is None:
         prompt_template = PROMPT_TEMPLATES["default"]
 
     if temperature is None:
-        temperature = DEFAULT_TEMPERATURE
+        temperature = OPENAI["DEFAULT_TEMPERATURE"]
 
     if max_tokens is None:
-        max_tokens = DEFAULT_MAX_TOKENS
+        max_tokens = OPENAI["DEFAULT_MAX_TOKENS"]
 
     if model is None:
-        model = DEFAULT_MODEL
+        model = OPENAI["DEFAULT_MODEL"]
 
     # 构建完整的提示词
     full_prompt = prompt_template.format(content)
@@ -71,16 +62,16 @@ def optimize_content(content, prompt_template=None, temperature=None, max_tokens
 
         return optimized_content
 
-    except openai.error.AuthenticationError:
-        raise ValueError("OpenAI API密钥无效，请检查您的API密钥")
+    except openai.AuthenticationError:
+        raise ValueError("OpenAI API密钥无效，请检查config.py中的API密钥配置")
 
-    except openai.error.RateLimitError:
+    except openai.RateLimitError:
         raise Exception("API请求速率限制，请稍后再试")
 
-    except openai.error.APIConnectionError:
+    except openai.APIConnectionError:
         raise Exception("网络连接错误，请检查您的网络连接")
 
-    except openai.error.OpenAIError as e:
+    except openai.APIError as e:
         raise Exception(f"OpenAI API错误: {str(e)}")
 
 
@@ -114,24 +105,18 @@ if __name__ == "__main__":
     # 模块测试代码
     print("AI Formatter 模块测试")
 
-    # 设置测试API密钥（仅用于测试）
-    test_api_key = input("请输入OpenAI API密钥进行测试（直接回车跳过）: ").strip()
-    if test_api_key:
-        os.environ["OPENAI_API_KEY"] = test_api_key
+    # 测试API连接
+    if test_connection():
+        print("✅ API连接测试成功")
 
-        if test_connection():
-            print("✅ API连接测试成功")
+        # 测试内容优化
+        test_content = "这是一个测试内容，请优化它的排版。"
+        print(f"测试内容: {test_content}")
 
-            # 测试内容优化
-            test_content = "这是一个测试内容，请优化它的排版。"
-            print(f"测试内容: {test_content}")
-
-            try:
-                optimized = optimize_content(test_content)
-                print(f"优化结果: {optimized}")
-            except Exception as e:
-                print(f"优化测试失败: {str(e)}")
-        else:
-            print("❌ API连接测试失败")
+        try:
+            optimized = optimize_content(test_content)
+            print(f"优化结果: {optimized}")
+        except Exception as e:
+            print(f"优化测试失败: {str(e)}")
     else:
-        print("跳过测试")
+        print("❌ API连接测试失败")

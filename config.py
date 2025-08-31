@@ -1,20 +1,37 @@
-# WordPress 配置
-WORDPRESS_CONFIG = {
-    "site_url": "https://yourwordpresssite.com",
-    "username": "your_username",
-    "app_password": "your_app_password"
+# -*- coding: utf-8 -*-
+"""
+WordPress 文章发布工具配置文件
+请根据您的实际情况修改以下配置
+"""
+
+# ==================== WordPress 配置 ====================
+WORDPRESS = {
+    "SITE_URL": "https://blog.jamaisvu.tech",  # 你的WordPress站点地址
+    "USERNAME": "grayfalcon",               # 你的WordPress用户名
+    "APP_PASSWORD": "8MCE Kms7 kjlp oQmc A88S ihWU",       # 你的应用程序密码
 }
 
-# OpenAI 配置
-OPENAI_CONFIG = {
-    "api_key": "your_openai_api_key",  # 建议使用环境变量而不是硬编码
-    "default_model": "gpt-3.5-turbo",
-    "default_temperature": 0.7,
-    "default_max_tokens": 1000
+# ==================== OpenAI 配置 ====================
+OPENAI = {
+    "API_KEY": "ed096dd7-6169-4a5a-a7ee-9e518251ab1d",          # 你的OpenAI API密钥
+    "BASE_URL": "https://ark.cn-beijing.volces.com/api/v3",   # OpenAI API基础URL (对于Azure OpenAI或其他兼容API，请修改此项)
+    "DEFAULT_MODEL": "ep-20250317164758-lvppv",          # 默认模型
+    "DEFAULT_TEMPERATURE": 0.7,                # 默认温度参数 (0.0-1.0)
+    "DEFAULT_MAX_TOKENS": 1000,                # 默认最大token数
 }
 
-# AI 优化配置
-AI_OPTIMIZATION_CONFIG = {
-    "enabled_by_default": False,
-    "default_prompt_template": "default"
+# ==================== AI 提示词模板配置 ====================
+PROMPT_TEMPLATES = {
+    "default": "请优化以下内容的排版，使其更易读和专业：\n\n{}",
+    "technical": "作为技术文档专家，请优化以下技术内容的排版，确保专业性和准确性：\n\n{}",
+    "creative": "请以创意写作的方式优化以下内容，使其更生动有趣，同时保持原意：\n\n{}",
+    "seo": "请优化以下内容的排版，使其更适合搜索引擎优化，同时保持可读性：\n\n{}",
+    "minimal": "请简洁地优化以下内容的排版，去除冗余，保持核心信息：\n\n{}"
+}
+
+# ==================== 应用程序配置 ====================
+APP = {
+    "DEFAULT_STATUS": "publish",               # 默认发布状态 (publish/draft)
+    "ENABLE_AI_BY_DEFAULT": False,             # 是否默认启用AI优化
+    "TIMEOUT": 30,                             # 请求超时时间(秒)
 }
