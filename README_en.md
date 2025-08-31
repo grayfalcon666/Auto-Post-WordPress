@@ -205,14 +205,14 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 
 ## Changelog
 
-### v1.1.0 (2025-08-31)
+### v1.1.0 (2025-09-01)
 - Added AI Formatting Optimization Module
 - Implemented configurable OpenAI parameters
 - Added custom prompt template system
 - Added optimization intensity control
 
 
-### v1.0.0 (2025-09-01)
+### v1.0.0 (2025-08-31)
 - Initial release
 - Supports manual input of HTML content
 - Allows configuration of article status, categories, tags, and excerpts
