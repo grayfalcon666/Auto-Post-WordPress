@@ -1,7 +1,6 @@
 import requests
 import base64
 import json
-import os
 from config import WORDPRESS, OPENAI, PROMPT_TEMPLATES, APP
 
 

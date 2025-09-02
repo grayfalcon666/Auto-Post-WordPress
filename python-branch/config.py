@@ -7,15 +7,15 @@ WordPress 文章发布工具配置文件
 # ==================== WordPress 配置 ====================
 WORDPRESS = {
     "SITE_URL": "https://blog.jamaisvu.tech",  # 你的WordPress站点地址
-    "USERNAME": "your_username",               # 你的WordPress用户名
-    "APP_PASSWORD": "your_app_password",       # 你的应用程序密码
+    "USERNAME": "grayfalcon",               # 你的WordPress用户名
+    "APP_PASSWORD": "rR2t QqwH 8PPu oYjj uf4V DYAD",       # 你的应用程序密码
 }
 
 # ==================== OpenAI 配置 ====================
 OPENAI = {
-    "API_KEY": "your_openai_api_key",          # 你的OpenAI API密钥
-    "BASE_URL": "https://api.openai.com/v1",   # OpenAI API基础URL (对于Azure OpenAI或其他兼容API，请修改此项)
-    "DEFAULT_MODEL": "gpt-3.5-turbo",          # 默认模型
+    "API_KEY": "ed096dd7-6169-4a5a-a7ee-9e518251ab1d",          # 你的OpenAI API密钥
+    "BASE_URL": "https://ark.cn-beijing.volces.com/api/v3",   # OpenAI API基础URL (对于Azure OpenAI或其他兼容API，请修改此项)
+    "DEFAULT_MODEL": "ep-20250317164758-lvppv",          # 默认模型
     "DEFAULT_TEMPERATURE": 0.7,                # 默认温度参数 (0.0-1.0)
     "DEFAULT_MAX_TOKENS": 1000,                # 默认最大token数
 }
